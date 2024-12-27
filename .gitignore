@@ -3,3 +3,18 @@
 .piolibdeps
 .clang_complete
 .gcc-flags.json
+.travis.yml
+
+# PlatformIO build files
+.pio/
+.build/
+
+# VSCode settings
+.vscode/
+
+# Python cache files
+*.pyc
+__pycache__/
+
+# Other temporary files
+*.log
