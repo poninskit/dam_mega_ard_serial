@@ -9,75 +9,88 @@ extern void printFilter (String filter_name);
 extern String setFilter (DAC_FILTER dac_ftr);
 extern void displayInfo ( );
 
+unsigned long lastRemoteMillis = 0; //Prevente Debounce in Remote,  it keeps track of time between clicks
+
 //------------------------------------------------------------------------------
-ACTION getActionFromRemote(){
 /*
-The Apple remote returns the following codes:
-The value for the third byte when we discard the least significant bit is:
-    HEX:
-    Repaet -   FFFFFFFF / 4294967295
-    Up -       77E1D06C / 2011287660
-    Down -     77E1B06C / 2011279468
-    Right -    77E1E06C / 2011291756
-    left -     77E1106C / 2011238508
-    middle -   77E1BA6C or 77E1206C / 2011282028 or 2011242604
-    menu -    77E1406C / 2011250796
-    play -     77E17A6C or 77E1206C / 2011265644 or 2011242604
+Bits 1-16: Apple Custom ID (Always the same)
+Bits 17-23: The Pairing ID (This changes per remote!)
+Bits 24-31: The Button Command
+Bit 32: Odd parity bit
+
+mask the results with 0x0000FF00 to skip pairing
+or update switch to short masked codes
+UP: 0x0D, DOWN: 0x0B, LEFT: 0x08, RIGHT: 0x07, MENU: 0x02, CENTER: 0x5D/0x04
 */
+ACTION getActionFromRemote(){
 
   if ( !irrecv.decode( &results ) )
     return NONE;
 
+  uint32_t val = results.value;
+  LOG( "\nRemote RAW:" + String( val, HEX ) + "  " );
 
-    LOG( "Remote:" + String( results.value ) );
-
-    switch (results.value){
-      case 4294967295LL: // REPEAT //LL (long long) to avoid unsigned warning
-        //reapeat if volume change, holding the vol button
-        if ( prevAct == VOLUME_DOWN || prevAct == VOLUME_UP ){
-          action = prevAct;
-        }else{
-          action = NONE;
-        }
-      break;
-      case 2011287696: // UP
-      case 2011255020:
-        action = VOLUME_UP;
-      break;
-      case 2011279504: // DOWN
-      case 2011246828 :
-        action = VOLUME_DOWN;
-      break;
-      case 2011291792: // RIGHT
-      case 2011259116:
-        action = CHANNEL_RIGHT;
-      break;
-      case 2011238544: // LEFT
-      case 2011271404:
-        action = CHANNEL_LEFT;
-      break;
-      case 2011282064: // MIDDLE  or 77E1206C
-      case 2011275500:
-        action = VOLUME_MUTE;
-      break;
-      case 2011250832:  // MENU
-      case 2011283692:
-        action = FILTER;
-      break;
-      case 2011265680: // PLAY or 77E1206C
-      case 2011265644:
-        action = NONE;
-      break;
-      default:
-        action = NONE;
-      break;
-      }
-
-    LOG("Remote action: " + actionToString(action) );
-
+  // 1. Handle Repeat
+  if (val == 0xFFFFFFFF) {
     irrecv.resume();
-    prevAct = action;    // Remember the key in case we want to use the repeat code
+    if (prevAct == VOLUME_UP || prevAct == VOLUME_DOWN) return prevAct;
+    return NONE;
+  }
 
+  // 2. DEBOUNCE CHECK
+  // If the last button press was less than 250ms ago, ignore this one.
+  // This prevents the "double action" on Play/Enter/Menu.
+  if (millis() - lastRemoteMillis < 200) {
+    irrecv.resume();
+    return NONE; 
+  }
+
+  // 2. Extract the Command
+  // Based on your log "77e1502a", we need to grab the "50" part.
+  // We shift right by 8 bits to remove "2a", then mask the next 8 bits.
+  uint32_t command = (val >> 8) & 0xFF;
+
+  LOG( "Extracted Command: " + String(command, HEX) );
+
+  switch (command) {
+    case 0xD0: case 0xE1:
+    case 0x50:            
+      action = VOLUME_UP;
+      break;
+    case 0xB0: case 0x30: 
+      action = VOLUME_DOWN;
+      break;
+    case 0x10: case 0x90: 
+      action = CHANNEL_LEFT;
+      break;
+    case 0xE0: case 0x60: 
+      action = CHANNEL_RIGHT;
+      break;
+    case 0xBA: case 0x3A: // MIDDLE (Select)
+    case 0x20: case 0xA0: // SPAM Bits, repeats the code so it can cause bounce
+      action = VOLUME_MUTE;
+      break;
+    case 0x40: case 0xC0: 
+      action = FILTER;
+      break;
+    case 0x5E: case 0xDE: // PLAY/PAUSE
+    case 0x7A: case 0xFA: // SPAM Bits, repeats the code so it can cause bounce
+      action = VOLUME_MUTE;
+      break;
+    default:
+      action = NONE;
+      break;
+
+
+  }
+
+  LOG(" -> Action Assigned: " + String(action) );
+  
+  // Update the timer so we know when this last successful press happened
+  lastRemoteMillis = millis();
+
+  irrecv.resume();
+  prevAct = action;
 return action;
 }
 
