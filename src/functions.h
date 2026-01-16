@@ -23,32 +23,52 @@ or update switch to short masked codes
 UP: 0x0D, DOWN: 0x0B, LEFT: 0x08, RIGHT: 0x07, MENU: 0x02, CENTER: 0x5D/0x04
 */
 ACTION getActionFromRemote(){
-
   if ( !irrecv.decode( &results ) )
     return NONE;
 
   uint32_t val = results.value;
-  LOG( "\nRemote RAW:" + String( val, HEX ) + "  " );
+  
+ // Lower byte order of argument depends on IR library.
+  // For standard NEC (32 bits, LSB first):
+  // Raw value: 0x77e1b036
+  // Bit positions (MSB → LSB):
+  // 31........24 23........16 15........8 7........0
+  //    77           e1          b0         36
+  // But NEC logical order is:
+  // Address (LSB) | Address (MSB) | Command | ~Command
+  uint16_t custom_id  = (val >> 16) & 0xFFFF;  // bits 0–15 
+  uint8_t  command    = (val >> 8)  & 0xFF;    // bits 16–22, ignore for now
+  uint8_t  pair_id    =  val        & 0xFF;    // bits 24–31 if you’ve shifted differently
 
+  LOG(  "\nRemote RAW:"   + String( val, HEX ) 
+      + " -> custom_id: " + String( custom_id, HEX ) 
+      + " / command: "    + String( command, HEX )
+      + " / pair_id: "    + String( pair_id, HEX ));
+  // Expected Output example: Remote RAW: 77e1b036 -> custom_id : 77e1 / command: b0 / pair_id: 36
+
+  
   // 1. Handle Repeat
   if (val == 0xFFFFFFFF) {
-    irrecv.resume();
+    resume();
     if (prevAct == VOLUME_UP || prevAct == VOLUME_DOWN) return prevAct;
     return NONE;
   }
 
-  // 2. DEBOUNCE CHECK
+
+  // 2. Ignore non‑Apple NEC IDs
+  const uint16_t APPLE_CUSTOM_ID = 0x77E1;  // Apple ID for IR Remotes
+  if (custom_id != APPLE_CUSTOM_ID) {
+    resume();
+    return NONE;
+  }
+
+  // 3. DEBOUNCE CHECK
   // If the last button press was less than 250ms ago, ignore this one.
   // This prevents the "double action" on Play/Enter/Menu.
   if (millis() - lastRemoteMillis < 200) {
-    irrecv.resume();
+    resume();
     return NONE; 
   }
-
-  // 2. Extract the Command
-  // Based on your log "77e1502a", we need to grab the "50" part.
-  // We shift right by 8 bits to remove "2a", then mask the next 8 bits.
-  uint32_t command = (val >> 8) & 0xFF;
 
   LOG( "Extracted Command: " + String(command, HEX) );
 
