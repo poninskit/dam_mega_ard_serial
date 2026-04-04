@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"d:/3_Priv/Projects/HiFiDuino/PlatformIO/Projects/BIII_ES9038Pro/src/screen/lvgl_v8_port.h\" \"d:/3_Priv/Projects/DAM 1021/PlatformIO/Projects/DAM_MEGA_ARD_SERIAL/src/screen/lvgl_v8_port.h\")",
+      "Bash(cp \"d:/3_Priv/Projects/HiFiDuino/PlatformIO/Projects/BIII_ES9038Pro/src/screen/lvgl_v8_port.cpp\" \"d:/3_Priv/Projects/DAM 1021/PlatformIO/Projects/DAM_MEGA_ARD_SERIAL/src/screen/lvgl_v8_port.cpp\")",
+      "Bash(python3 -c \"import sys, json; lines = sys.stdin.read\\(\\).strip\\(\\).split\\('\\\\n'\\); [print\\(json.loads\\(l\\).get\\('message', {}\\).get\\('content', ''\\)\\) for l in lines[-5:] if l]\")",
+      "Bash(\"C:/Users/ponin/.platformio/penv/Scripts/platformio.exe\" run:*)",
+      "Bash(\"C:/Users/ponin/.platformio/penv/Scripts/platformio.exe\" --version)",
+      "Bash(\"C:/Users/ponin/.platformio/penv/Scripts/platformio.exe\" upgrade:*)",
+      "Read(//c/Users/ponin/.platformio/packages/**)",
+      "Read(//c/Users/ponin/.platformio/platforms/espressif32/builder/frameworks/**)",
+      "Read(//c/Users/ponin/.platformio/platforms/espressif32@6.13.0/**)",
+      "Bash(powershell -Command ':*)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\ponin\\.platformio\\packages\\framework-arduinoespressif32-libs\\esp32s3\\qio_opi\\include",
+      "C:\\Users\\ponin\\.platformio\\packages\\framework-arduinoespressif32-libs\\esp32s3"
+    ]
+  }
+}
